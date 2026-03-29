@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 function seededRandom(seed: number) {
   let s = seed;
@@ -10,51 +10,58 @@ function seededRandom(seed: number) {
 }
 
 const COLORS = [
-  "#C9A84C", "#E8D48B", "#8B7332", "#D4AF37", "#FFD700",
+  "#C9A84C", "#E8D48B", "#D4AF37", "#FFD700", "#B8960C",
   "#4ECDC4", "#45B7D1", "#96CEB4", "#88D8B0", "#6BCB77",
   "#FF6B6B", "#EE6B6B", "#D35D6E", "#C44569", "#E84393",
-  "#A29BFE", "#6C5CE7", "#786FA6", "#574B90", "#303952",
+  "#A29BFE", "#6C5CE7", "#786FA6", "#574B90", "#7C4DFF",
   "#FDA085", "#F6D365", "#84FAB0", "#8FD3F4", "#A18CD1",
   "#FCCB90", "#D57EEB", "#E0C3FC", "#F093FB", "#C471F5",
+  "#00E5FF", "#69F0AE", "#FFAB40", "#FF5252", "#B388FF",
+  "#80DEEA", "#AED581", "#FFD54F", "#FF8A80", "#EA80FC",
 ];
 
 export default function MonteCarloChart() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    const w = parent.clientWidth;
+    const h = parent.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    const w = rect.width;
-    const h = rect.height;
-    const steps = 200;
-    const numPaths = 60;
-    const padX = 60;
-    const padY = 40;
-    const padBottom = 50;
-    const plotW = w - padX - 20;
-    const plotH = h - padY - padBottom;
+    const steps = 300;
+    const numPaths = 120;
+    const padL = 55;
+    const padR = 15;
+    const padT = 15;
+    const padB = 35;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
 
-    // gerar trajetórias
+    // gerar trajetórias com dispersão variada
     const paths: number[][] = [];
     for (let i = 0; i < numPaths; i++) {
       const rng = seededRandom(i * 137 + 42);
-      const drift = 0.0008 + (rng() - 0.3) * 0.001;
-      const vol = 0.015 + rng() * 0.025;
+      const drift = 0.0005 + (rng() - 0.4) * 0.0012;
+      const vol = 0.012 + rng() * 0.03;
       const path = [1000];
       for (let s = 1; s <= steps; s++) {
         const prev = path[s - 1];
         const shock = (rng() + rng() + rng() - 1.5) * 2 * vol;
-        path.push(prev * (1 + drift + shock));
+        path.push(Math.max(prev * (1 + drift + shock), 0));
       }
       paths.push(path);
     }
@@ -63,76 +70,57 @@ export default function MonteCarloChart() {
     const minVal = Math.min(...allVals) * 0.95;
     const maxVal = Math.max(...allVals) * 1.05;
 
-    const toX = (step: number) => padX + (step / steps) * plotW;
-    const toY = (val: number) => padY + plotH - ((val - minVal) / (maxVal - minVal)) * plotH;
+    const toX = (step: number) => padL + (step / steps) * plotW;
+    const toY = (val: number) => padT + plotH - ((val - minVal) / (maxVal - minVal)) * plotH;
 
     // fundo
-    ctx.fillStyle = "var(--bg-deep, #0a0a0f)";
+    ctx.fillStyle = "#08080d";
     ctx.fillRect(0, 0, w, h);
 
-    // grid
-    ctx.strokeStyle = "rgba(201,168,76,0.06)";
+    // grid sutil
+    ctx.strokeStyle = "rgba(201,168,76,0.05)";
     ctx.lineWidth = 1;
-    const gridLines = 6;
-    for (let i = 0; i <= gridLines; i++) {
-      const y = padY + (plotH / gridLines) * i;
+    const gridY = 8;
+    for (let i = 0; i <= gridY; i++) {
+      const y = padT + (plotH / gridY) * i;
       ctx.beginPath();
-      ctx.moveTo(padX, y);
-      ctx.lineTo(padX + plotW, y);
+      ctx.moveTo(padL, y);
+      ctx.lineTo(padL + plotW, y);
       ctx.stroke();
     }
-    for (let i = 0; i <= 5; i++) {
-      const x = padX + (plotW / 5) * i;
+    const gridX = 10;
+    for (let i = 0; i <= gridX; i++) {
+      const x = padL + (plotW / gridX) * i;
       ctx.beginPath();
-      ctx.moveTo(x, padY);
-      ctx.lineTo(x, padY + plotH);
+      ctx.moveTo(x, padT);
+      ctx.lineTo(x, padT + plotH);
       ctx.stroke();
     }
 
-    // eixos labels
-    ctx.fillStyle = "rgba(201,168,76,0.4)";
-    ctx.font = "11px 'JetBrains Mono', monospace";
+    // labels eixo Y
+    ctx.fillStyle = "rgba(201,168,76,0.35)";
+    ctx.font = "10px 'JetBrains Mono', monospace";
     ctx.textAlign = "right";
-    for (let i = 0; i <= gridLines; i++) {
-      const val = maxVal - ((maxVal - minVal) / gridLines) * i;
-      const y = padY + (plotH / gridLines) * i;
-      ctx.fillText(val.toFixed(0), padX - 8, y + 4);
-    }
-    ctx.textAlign = "center";
-    for (let i = 0; i <= 5; i++) {
-      const step = Math.round((steps / 5) * i);
-      const x = padX + (plotW / 5) * i;
-      ctx.fillText(`${step}`, x, padY + plotH + 20);
+    for (let i = 0; i <= gridY; i++) {
+      const val = maxVal - ((maxVal - minVal) / gridY) * i;
+      const y = padT + (plotH / gridY) * i;
+      ctx.fillText(val.toFixed(0), padL - 8, y + 3);
     }
 
-    // label eixo Y
-    ctx.save();
-    ctx.translate(14, padY + plotH / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = "rgba(201,168,76,0.3)";
-    ctx.font = "11px 'JetBrains Mono', monospace";
+    // labels eixo X
     ctx.textAlign = "center";
-    ctx.fillText("Equity (R$)", 0, 0);
-    ctx.restore();
-
-    // label eixo X
-    ctx.fillStyle = "rgba(201,168,76,0.3)";
-    ctx.font = "11px 'JetBrains Mono', monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("Iterações", padX + plotW / 2, h - 8);
-
-    // título
-    ctx.fillStyle = "rgba(201,168,76,0.5)";
-    ctx.font = "13px 'JetBrains Mono', monospace";
-    ctx.textAlign = "center";
-    ctx.fillText("Equity charts of all simulation runs", w / 2, 20);
+    for (let i = 0; i <= gridX; i++) {
+      const step = Math.round((steps / gridX) * i);
+      const x = padL + (plotW / gridX) * i;
+      ctx.fillText(`${step}`, x, padT + plotH + 18);
+    }
 
     // trajetórias
     paths.forEach((path, i) => {
       ctx.beginPath();
       ctx.strokeStyle = COLORS[i % COLORS.length];
-      ctx.globalAlpha = 0.45;
-      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = 0.8;
       path.forEach((val, s) => {
         const x = toX(s);
         const y = toY(val);
@@ -144,35 +132,28 @@ export default function MonteCarloChart() {
 
     ctx.globalAlpha = 1;
 
-    // linha de referência no valor inicial
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "rgba(201,168,76,0.2)";
+    // linha base 1000
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "rgba(201,168,76,0.15)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     const refY = toY(1000);
-    ctx.moveTo(padX, refY);
-    ctx.lineTo(padX + plotW, refY);
+    ctx.moveTo(padL, refY);
+    ctx.lineTo(padL + plotW, refY);
     ctx.stroke();
     ctx.setLineDash([]);
   }, []);
 
+  useEffect(() => {
+    draw();
+    const handleResize = () => draw();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [draw]);
+
   return (
-    <div style={{
-      width: "100%",
-      maxWidth: 1000,
-      margin: "0 auto",
-      padding: "0 20px",
-    }}>
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: "100%",
-          height: 450,
-          borderRadius: 12,
-          border: "1px solid var(--border)",
-          background: "var(--bg-deep)",
-        }}
-      />
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      <canvas ref={canvasRef} style={{ display: "block" }} />
     </div>
   );
 }
