@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Home, FileText, MessageCircle } from "lucide-react";
+import { BarChart3, Home, FileText } from "lucide-react";
 
 const NAV = [
   { href: "/", label: "Home", icon: Home },
@@ -54,15 +54,6 @@ export default function Header() {
               </Link>
             );
           })}
-          <a href="https://wa.me/5543998023798" target="_blank" rel="noopener"
-            style={{
-              marginLeft: 12, padding: "6px 12px", borderRadius: 8,
-              background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)",
-              color: "#25D366", fontSize: 12, textDecoration: "none",
-              display: "flex", alignItems: "center", gap: 5,
-            }}>
-            <MessageCircle size={14} /> WhatsApp
-          </a>
         </nav>
       </div>
     </header>
