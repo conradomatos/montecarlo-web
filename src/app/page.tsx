@@ -1,14 +1,12 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import MonteCarloChart from "@/components/MonteCarloChart";
+import MonteCarloHero from "@/components/MonteCarloHero";
 
 export default function HomePage() {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Header />
-      <main style={{ flex: 1, display: "flex" }}>
-        <MonteCarloChart />
-      </main>
+      <MonteCarloHero />
       <Footer />
     </div>
   );
